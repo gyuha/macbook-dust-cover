@@ -35,7 +35,7 @@ SKIRT_HOLE_Z = 10.0  # 다리 원형 창 중심 높이 (맥북 윗면 위)
 DT_LEN = 19.0        # 장부 길이 = 맞물림 길이 (15~20)
 DT_ROOT = 10.0       # 장부 뿌리 폭
 DT_FLARE = 3.0       # 끝으로 갈수록 한쪽당 넓어지는 양. 끝 반폭(뿌리/2+FLARE+CLEAR)은 다리 안쪽 면(8.35)보다 작아야 다리가 이음선까지 온다
-DT_CLEAR = 0.12      # 장부와 홈 사이 한쪽 여유 (꽉 끼면 0.15, 헐거우면 0.1). 두 조각의 안쪽 다리 사이 틈도 이 값이다
+DT_CLEAR = 0.05      # 장부와 홈 사이 한쪽 여유 (안 들어가면 0.08, 헐거우면 0.03). 경사가 얕아 길이 방향 유격은 이 값의 약 6배다. 두 조각의 안쪽 다리 사이 틈도 이 값이다
 OUT_DIR = os.path.dirname(os.path.abspath(__file__)) if "__file__" in globals() else os.getcwd()
 
 XJ = TOTAL_LEN / 2.0                         # 두 조각의 경계
@@ -136,11 +136,12 @@ def leg_prism(seam_x, side):
 
 
 def inner_tab(seam_x, side):
-    """이음선 쪽 안쪽 탭: 다리 두 장 + 가로대를 leg_prism 모양으로 깎은 것. 홀은 뚫지 않는다."""
+    """이음선 쪽 안쪽 탭: 다리 두 장 + 가로대를 leg_prism 모양으로 깎은 것. 가로대에 이음선을 중심으로 한 원형 홀(조각마다 반원)이 있다."""
     x0, x1 = (seam_x - INNER_TAB, seam_x) if side < 0 else (seam_x, seam_x + INNER_TAB)
     parts = [box(x0, x1, ya, yb, -INNER_DEPTH, ARCH_TOP) for ya, yb in SKIRT_Y]
     parts.append(box(x0, x1, SKIRT_Y[0][0], SKIRT_Y[1][1], PAD_T, BAR_TOP))
-    return fuse(parts).common(leg_prism(seam_x, side))
+    hole = Part.makeCylinder(BAR_HOLE_D / 2.0, BAR_T + 2, Vector(XJ + DT_CLEAR / 2.0, LAPTOP_T / 2.0, PAD_T - 1), Vector(0, 0, 1))
+    return fuse(parts).common(leg_prism(seam_x, side)).cut(hole)
 
 
 def outline(x0, x1, round_at_x0):

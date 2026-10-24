@@ -113,8 +113,9 @@ xj = rb.XMin
 legs = []
 for S, x0 in ((L, xj - 3.0), (R, xj)):
     legs.append(sum(S.common(Part.makeBox(3.0, 2.4, 4.0, Vector(x0, y0, -5.0))).Volume for y0 in (-3.0, LAPTOP_T + 0.6)))
-ok_c = ok_c and min(legs) > 1.0
-detail.append("이음선 다리 부피 L=%.1f R=%.1f" % (legs[0], legs[1]))
+seam_hole = sum(S.common(Part.makeBox(4, 4, 10.5, Vector(xj - 2, LAPTOP_T / 2 - 2, 0.5))).Volume for S in (L, R))  # 이음선 가로대 홀(Z 축)
+ok_c = ok_c and min(legs) > 1.0 and seam_hole < 1e-3
+detail.append("이음선 다리 부피 L=%.1f R=%.1f 이음선 홀막힘 %.3f" % (legs[0], legs[1], seam_hole))
 report("c", ok_c, "; ".join(detail))
 
 # (d) 닫힌 솔리드
