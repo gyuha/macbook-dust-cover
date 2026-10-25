@@ -1,4 +1,4 @@
-# MacBook Pro 14" M5 세로 거치용 환기구 먼지 덮개 (2조각, 도브테일 이음, H자 탭)
+# MacBook Pro 14" M5 세로 거치용 환기구 먼지 덮개 (2조각, 겹친 다리 + 나사 이음, H자 탭)
 # 실행: /Applications/FreeCAD.app/Contents/Resources/bin/freecadcmd dust_cover.py
 # 좌표: X = 힌지 방향(길이), Y = 맥북 두께 방향(0 = 화면 뒷면 쪽, T = 밑판 쪽), Z = 위(맥북 윗면 = 0)
 # 출력 방향: 바깥 둥근 끝면을 베드에 대고 세운다(왼쪽 조각은 +X, 오른쪽 조각은 -X 방향으로 쌓임).
@@ -31,11 +31,12 @@ BAR_T = 4.0          # 가로대 두께(높이)
 BAR_HOLE_D = 8.0     # 가로대 원형 홀 지름 (축이 Z: 맥북 환기구 쪽에서 위로 공기가 통한다)
 SKIRT_HOLE_D = 7.0   # 다리 원형 창 지름 (축이 Y: 앞뒤로 공기가 통한다)
 SKIRT_HOLE_Z = 10.0  # 다리 원형 창 중심 높이 (맥북 윗면 위)
-# 도브테일: 왼쪽 조각의 장부(끝이 넓은 사다리꼴)가 오른쪽 조각의 홈에 끼워진다 (쌓는 방향으로 15° 벌어져 서포트 불필요)
-DT_LEN = 19.0        # 장부 길이 = 맞물림 길이 (15~20)
-DT_ROOT = 10.0       # 장부 뿌리 폭
-DT_FLARE = 3.0       # 끝으로 갈수록 한쪽당 넓어지는 양. 끝 반폭(뿌리/2+FLARE+CLEAR)은 다리 안쪽 면(8.35)보다 작아야 다리가 이음선까지 온다
-DT_CLEAR = 0.05      # 장부와 홈 사이 한쪽 여유 (안 들어가면 0.08, 헐거우면 0.03). 경사가 얕아 길이 방향 유격은 이 값의 약 6배다. 두 조각의 안쪽 다리 사이 틈도 이 값이다
+SEAM_CLEAR = 0.05    # 이음선에서 두 조각 사이 틈, 겹친 다리와 바깥 판·지붕 사이 여유 (겹친 다리가 안 들어가면 0.1)
+# 이음선 아래 고정: 오른쪽 안쪽 다리가 이음선을 넘어 왼쪽 바깥 판 안쪽으로 겹치고, 겹친 곳에 앞뒤 각각 접시머리 나사를 박는다 (꺾임·위로 빠짐 방지)
+LAP = 8.0            # 오른쪽 다리가 이음선을 넘어 겹치는 길이
+SCREW_HOLE_D = 2.6   # M3 × 10 접시머리 나사 구멍. 나사산이 두 겹 모두를 파고들게 작게 뚫는다 (안 들어가면 2.8, 헛돌면 2.5)
+SCREW_HEAD_D = 6.0   # M3 접시머리 머리 지름 Dk (90° 접시, 머리 높이 k = 1.75)
+PIN_Z = 8.5          # 나사 중심 높이 (가로대 위, 지붕 아래)
 OUT_DIR = os.path.dirname(os.path.abspath(__file__)) if "__file__" in globals() else os.getcwd()
 
 XJ = TOTAL_LEN / 2.0                         # 두 조각의 경계
@@ -49,6 +50,7 @@ ROOF_TOP = GAP + ROOF_RISE + ROOF_T
 ARCH_TOP = GAP + ROOF_RISE                  # 지붕 안쪽면의 가장 높은 곳 (다리가 지붕에 닿는 높이)
 BAR_TOP = PAD_T + BAR_T
 SKIRT_Y = ((-CLEAR - WALL, -CLEAR), (LAPTOP_T + CLEAR, LAPTOP_T + CLEAR + WALL))
+OUTER_Y = ((-CLEAR - 2 * WALL, -CLEAR - WALL), (LAPTOP_T + CLEAR + WALL, LAPTOP_T + CLEAR + 2 * WALL))  # 안쪽 탭 다리 바깥에 덧댄 판
 K45 = 0.70710678                            # cos45°
 INNER_TAB = (ARCH_TOP + INNER_DEPTH) + SEAM_R * (2 * K45 - 1)   # 안쪽 탭의 X 방향 길이: 원호(수평 접선)+45° 직선이 지붕에 닿는 거리
 
@@ -67,20 +69,9 @@ def roof(x0, x1):
     return outer.cut(inner).common(box(x0, x1, Y0, Y1, GAP, ROOF_TOP + 1))
 
 
-def prism(points_xy):
-    """평면 다각형을 Z 방향으로 길게 뽑은 기둥 (지붕과 겹쳐 모양을 자르는 용도)."""
-    z0 = -SKIRT_DEPTH - 2.0
-    pts = [Vector(x, y, z0) for x, y in points_xy]
-    face = Part.Face(Part.makePolygon(pts + [pts[0]]))
-    return face.extrude(Vector(0, 0, ROOF_TOP + 4.0 - z0))
-
-
-def dovetail(grow):
-    """장부 사다리꼴. grow = 홈 쪽 여유(0이면 장부). 끝(X=XJ+DT_LEN)이 더 넓다."""
-    hr = DT_ROOT / 2.0 + grow
-    ht = DT_ROOT / 2.0 + DT_FLARE + grow
-    xe = XJ + DT_LEN + grow
-    return [(XJ - 1.0, YM - hr), (XJ, YM - hr), (xe, YM - ht), (xe, YM + ht), (XJ, YM + hr), (XJ - 1.0, YM + hr)]
+def under_arch(x0, x1, shrink):
+    """지붕 안쪽면 아래 공간(아치 원기둥). shrink만큼 지붕에서 떨어뜨린다."""
+    return Part.makeCylinder(ARCH_R - shrink, x1 - x0, Vector(x0, YM, ARCH_ZC), Vector(1, 0, 0))
 
 
 def fillet_y(shape, radius, z_ok):
@@ -136,11 +127,11 @@ def leg_prism(seam_x, side):
 
 
 def inner_tab(seam_x, side):
-    """이음선 쪽 안쪽 탭: 다리 두 장 + 가로대를 leg_prism 모양으로 깎은 것. 가로대에 이음선을 중심으로 한 원형 홀(조각마다 반원)이 있다."""
+    """이음선 쪽 안쪽 탭: 다리 두 장(바깥 판을 덧대 두 겹) + 가로대를 leg_prism 모양으로 깎은 것. 가로대에 이음선을 중심으로 한 원형 홀(조각마다 반원)이 있다."""
     x0, x1 = (seam_x - INNER_TAB, seam_x) if side < 0 else (seam_x, seam_x + INNER_TAB)
-    parts = [box(x0, x1, ya, yb, -INNER_DEPTH, ARCH_TOP) for ya, yb in SKIRT_Y]
+    parts = [box(x0, x1, ya, yb, -INNER_DEPTH, ARCH_TOP) for ya, yb in SKIRT_Y + OUTER_Y]
     parts.append(box(x0, x1, SKIRT_Y[0][0], SKIRT_Y[1][1], PAD_T, BAR_TOP))
-    hole = Part.makeCylinder(BAR_HOLE_D / 2.0, BAR_T + 2, Vector(XJ + DT_CLEAR / 2.0, LAPTOP_T / 2.0, PAD_T - 1), Vector(0, 0, 1))
+    hole = Part.makeCylinder(BAR_HOLE_D / 2.0, BAR_T + 2, Vector(XJ + SEAM_CLEAR / 2.0, LAPTOP_T / 2.0, PAD_T - 1), Vector(0, 0, 1))
     return fuse(parts).common(leg_prism(seam_x, side)).cut(hole)
 
 
@@ -158,21 +149,38 @@ def outline(x0, x1, round_at_x0):
     return p.makeFillet(CORNER_R, edges) if CORNER_R > 0 else p
 
 
+def pin_hole():
+    """나사 구멍(앞뒤 관통) + 바깥 판 바깥면의 90° 접시 자리 (머리가 면과 같은 높이로 들어간다)."""
+    x = XJ - LAP / 2.0
+    r = SCREW_HEAD_D / 2.0 + 0.1
+    hole = Part.makeCylinder(SCREW_HOLE_D / 2.0, W + 2, Vector(x, Y0 - 1, PIN_Z), Vector(0, 1, 0))
+    for y, d in ((OUTER_Y[0][0], 1), (OUTER_Y[1][1], -1)):
+        hole = hole.fuse(Part.makeCone(r, 0, r, Vector(x, y, PIN_Z), Vector(0, d, 0)))
+    return hole
+
+
 def left_piece():
-    tongue = roof(XJ - 1.0, XJ + DT_LEN).common(prism(dovetail(0.0)))
-    parts = [roof(0, XJ), tongue]
+    parts = [roof(0, XJ)]
     parts.append(tab(0, TAB, SKIRT_DEPTH))
-    parts.append(inner_tab(XJ, -1))
-    return fuse(parts).common(outline(0, XJ + DT_LEN, True))
+    (fa, fb), (ba, bb) = SKIRT_Y
+    notch = fuse([box(XJ - LAP - SEAM_CLEAR, XJ + 1, ya, yb, -INNER_DEPTH - 1, ARCH_TOP)
+                  for ya, yb in ((fa, fb + SEAM_CLEAR), (ba - SEAM_CLEAR, bb))]).common(under_arch(XJ - LAP - 1, XJ + 1, 0))
+    parts.append(inner_tab(XJ, -1).cut(notch))   # 오른쪽 다리가 들어올 자리(안쪽 겹·가로대 끝)를 비운다
+    return fuse(parts).common(outline(0, XJ, True)).cut(pin_hole())
 
 
 def right_piece():
-    x_start = XJ + DT_CLEAR
-    roof_part = roof(x_start, TOTAL_LEN).cut(prism(dovetail(DT_CLEAR)))  # 지붕에만 홈을 판다(다리·가로대는 그대로)
-    parts = [roof_part]
+    x_start = XJ + SEAM_CLEAR
+    parts = [roof(x_start, TOTAL_LEN)]
     parts.append(inner_tab(x_start, +1))
+    # 이음선을 넘어 왼쪽 조각 바깥 판 안쪽으로 들어가는 다리 (바깥 판·지붕 쪽으로 SEAM_CLEAR 여유).
+    # 왼쪽 조각의 빈 자리가 이음선 쪽으로 열려 있어, 오른쪽 조각을 길이 방향으로 밀어 넣거나 아래에서 올려 끼운다
+    (fa, fb), (ba, bb) = SKIRT_Y
+    for ya, yb in ((fa + SEAM_CLEAR, fb), (ba, bb - SEAM_CLEAR)):
+        lug = box(XJ - LAP, x_start, ya, yb, -INNER_DEPTH, ARCH_TOP)
+        parts.append(lug.common(leg_prism(x_start, -1)).common(under_arch(XJ - LAP, x_start, SEAM_CLEAR)))
     parts.append(tab(TOTAL_LEN - TAB, TOTAL_LEN, SKIRT_DEPTH))
-    return fuse(parts).common(outline(x_start, TOTAL_LEN, False))
+    return fuse(parts).common(outline(XJ - LAP, TOTAL_LEN, False)).cut(pin_hole())
 
 
 def export(shape, name):
