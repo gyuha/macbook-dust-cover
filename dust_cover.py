@@ -1,4 +1,4 @@
-# MacBook Pro 14" M5 세로 거치용 환기구 먼지 덮개 (2조각, 겹친 다리 + 나사 이음, H자 탭)
+# MacBook Pro 14" M5 세로 거치용 환기구 먼지 덮개 (2조각, 겹친 다리 + 스냅 후크 이음, H자 탭)
 # 실행: /Applications/FreeCAD.app/Contents/Resources/bin/freecadcmd dust_cover.py
 # 좌표: X = 힌지 방향(길이), Y = 맥북 두께 방향(0 = 화면 뒷면 쪽, T = 밑판 쪽), Z = 위(맥북 윗면 = 0)
 # 출력 방향: 바깥 둥근 끝면을 베드에 대고 세운다(왼쪽 조각은 +X, 오른쪽 조각은 -X 방향으로 쌓임).
@@ -16,7 +16,7 @@ GAP = 12.0           # 맥북 윗면에서 지붕 안쪽면 가장자리까지 �
 ROOF_RISE = 6.0      # 지붕 가운데가 가장자리보다 높은 정도 (0 = 평평, 클수록 둥글다)
 CORNER_R = 8.0       # 덮개 바깥 끝 모서리 둥글기 (평면에서 본 모양)
 PAD_T = 1.0          # 가로대 밑에 붙일 펠트/TPU 패드 두께 (GAP에 포함)
-ROOF_T = 4.0         # 지붕 두께
+ROOF_T = 3.0         # 지붕 두께
 ROOF_OVERHANG = 6.0  # 다리 바깥으로 내민 지붕 처마
 CLEAR = 0.6          # 맥북과 다리 사이 여유
 WALL = 2.4           # 다리(스커트) 두께
@@ -32,11 +32,15 @@ BAR_HOLE_D = 8.0     # 가로대 원형 홀 지름 (축이 Z: 맥북 환기구 �
 SKIRT_HOLE_D = 7.0   # 다리 원형 창 지름 (축이 Y: 앞뒤로 공기가 통한다)
 SKIRT_HOLE_Z = 10.0  # 다리 원형 창 중심 높이 (맥북 윗면 위)
 SEAM_CLEAR = 0.05    # 이음선에서 두 조각 사이 틈, 겹친 다리와 바깥 판·지붕 사이 여유 (겹친 다리가 안 들어가면 0.1)
-# 이음선 아래 고정: 오른쪽 안쪽 다리가 이음선을 넘어 왼쪽 바깥 판 안쪽으로 겹치고, 겹친 곳에 앞뒤 각각 접시머리 나사를 박는다 (꺾임·위로 빠짐 방지)
-LAP = 8.0            # 오른쪽 다리가 이음선을 넘어 겹치는 길이
-SCREW_HOLE_D = 2.6   # M3 × 10 접시머리 나사 구멍. 나사산이 두 겹 모두를 파고들게 작게 뚫는다 (안 들어가면 2.8, 헛돌면 2.5)
-SCREW_HEAD_D = 6.0   # M3 접시머리 머리 지름 Dk (90° 접시, 머리 높이 k = 1.75)
-PIN_Z = 8.5          # 나사 중심 높이 (가로대 위, 지붕 아래)
+# 이음선 아래 고정: 오른쪽 안쪽 다리(혀)가 이음선을 넘어 왼쪽 바깥 판 안쪽으로 겹치고, 혀 끝 바깥면의 턱이 바깥 판 안쪽 면의 막힌 홈에 걸린다 (영구 결합)
+# 길이 방향으로 밀어 넣으면 턱의 45° 경사가 혀를 안쪽으로 휘게 했다가 홈에서 딸깍 걸린다. 턱은 다리 높이 가운데에만 있어 홈의 위아래 벽이 위아래 움직임을 막는다
+LAP = 16.0           # 오른쪽 혀가 이음선을 넘어 겹치는 길이 (= 휘는 팔 길이. 짧으면 혀 뿌리가 갈라진다)
+HOOK_H = 0.6         # 턱이 혀 바깥면에서 튀어나온 높이 (= 끼울 때 혀가 휘는 양. 홈 깊이는 HOOK_H + SEAM_CLEAR)
+HOOK_LEN = 3.0       # 턱의 X 방향 길이 (네모 턱. 이음선 쪽 면이 90° 걸쇠 면)
+HOOK_Z = 8.5         # 턱 중심 높이 (가로대 위, 지붕 아래)
+HOOK_ZH = 5.0        # 턱 높이 (Z). 위아래는 혀가 평평하게 남아 홈 벽에 걸린다
+HOOK_ROOT_R = 1.0    # 혀 뿌리(오른쪽 바깥 판과 만나는 안쪽 모서리) 라운드
+HOOK_LEAD = 1.0      # 왼쪽 바깥 판 끝 안쪽 모서리의 45° 모따기 (네모 턱이 이 경사를 타고 혀를 휘게 한다. 턱 높이보다 커야 한다. 혀 뿌리 라운드도 이 자리에 들어간다)
 OUT_DIR = os.path.dirname(os.path.abspath(__file__)) if "__file__" in globals() else os.getcwd()
 
 XJ = TOTAL_LEN / 2.0                         # 두 조각의 경계
@@ -53,6 +57,7 @@ SKIRT_Y = ((-CLEAR - WALL, -CLEAR), (LAPTOP_T + CLEAR, LAPTOP_T + CLEAR + WALL))
 OUTER_Y = ((-CLEAR - 2 * WALL, -CLEAR - WALL), (LAPTOP_T + CLEAR + WALL, LAPTOP_T + CLEAR + 2 * WALL))  # 안쪽 탭 다리 바깥에 덧댄 판
 K45 = 0.70710678                            # cos45°
 INNER_TAB = (ARCH_TOP + INNER_DEPTH) + SEAM_R * (2 * K45 - 1)   # 안쪽 탭의 X 방향 길이: 원호(수평 접선)+45° 직선이 지붕에 닿는 거리
+LUG_Z0 = -INNER_DEPTH + SEAM_R * (1 - K45) + (LAP + SEAM_CLEAR - K45 * SEAM_R)   # 혀 아랫면(수평): 혀 끝에서 안쪽 다리 45° 선의 높이. 이 아래는 왼쪽 안쪽 겹·가로대가 그대로 남는다
 
 
 def box(x0, x1, y0, y1, z0, z1):
@@ -149,38 +154,62 @@ def outline(x0, x1, round_at_x0):
     return p.makeFillet(CORNER_R, edges) if CORNER_R > 0 else p
 
 
-def pin_hole():
-    """나사 구멍(앞뒤 관통) + 바깥 판 바깥면의 90° 접시 자리 (머리가 면과 같은 높이로 들어간다)."""
-    x = XJ - LAP / 2.0
-    r = SCREW_HEAD_D / 2.0 + 0.1
-    hole = Part.makeCylinder(SCREW_HOLE_D / 2.0, W + 2, Vector(x, Y0 - 1, PIN_Z), Vector(0, 1, 0))
-    for y, d in ((OUTER_Y[0][0], 1), (OUTER_Y[1][1], -1)):
-        hole = hole.fuse(Part.makeCone(r, 0, r, Vector(x, y, PIN_Z), Vector(0, d, 0)))
-    return hole
+def hook(face, s):
+    """혀 바깥면(face)에서 s쪽(-1 앞, +1 뒤)으로 HOOK_H 튀어나온 네모 턱. 혀 끝에 붙고, 이음선 쪽 면이 90° 걸쇠 면이다."""
+    ya, yb = sorted((face, face + s * HOOK_H))
+    return box(XJ - LAP, XJ - LAP + HOOK_LEN, ya, yb, HOOK_Z - HOOK_ZH / 2.0, HOOK_Z + HOOK_ZH / 2.0)
+
+
+def hook_pocket(face, s):
+    """왼쪽 바깥 판 안쪽 면의 막힌 홈: 턱보다 사방 SEAM_CLEAR 크다 (안쪽으로 1mm 더 늘려 혀 자리 빈 곳과 이어 붙인다)."""
+    ya, yb = sorted((face - s * 1.0, face + s * (HOOK_H + 2 * SEAM_CLEAR)))
+    z0 = HOOK_Z - HOOK_ZH / 2.0 - SEAM_CLEAR
+    return box(XJ - LAP - SEAM_CLEAR, XJ - LAP + HOOK_LEN + SEAM_CLEAR, ya, yb, z0, z0 + HOOK_ZH + 2 * SEAM_CLEAR)
+
+
+def root_fillet(face, s):
+    """혀 뿌리 안쪽 모서리(이음선 x, 혀 바깥면 face)를 채우는 반지름 HOOK_ROOT_R 라운드 조각."""
+    xs = XJ + SEAM_CLEAR
+    xc, yc = xs - HOOK_ROOT_R, face + s * HOOK_ROOT_R
+    ya, yb = sorted((face, yc))
+    sq = box(xc, xs, ya, yb, LUG_Z0, ARCH_TOP)
+    return sq.cut(Part.makeCylinder(HOOK_ROOT_R, ARCH_TOP - LUG_Z0 + 2, Vector(xc, yc, LUG_Z0 - 1), Vector(0, 0, 1)))
+
+
+def lead_in(plate_face, s):
+    """왼쪽 바깥 판 끝(이음선) 안쪽 모서리를 HOOK_LEAD 크기 45°로 깎아낼 삼각 기둥. plate_face는 바깥 판 안쪽 면, s는 바깥쪽."""
+    pts = [(XJ - HOOK_LEAD - 0.5, plate_face - s * 0.5), (XJ + 1, plate_face - s * 0.5), (XJ + 1, plate_face + s * (HOOK_LEAD + 1)),
+           (XJ - HOOK_LEAD - 0.5, plate_face - s * 0.5)]
+    w = Part.makePolygon([Vector(x, y, LUG_Z0 - SEAM_CLEAR) for x, y in pts])
+    return Part.Face(w).extrude(Vector(0, 0, ARCH_TOP - LUG_Z0 + SEAM_CLEAR))
 
 
 def left_piece():
     parts = [roof(0, XJ)]
     parts.append(tab(0, TAB, SKIRT_DEPTH))
     (fa, fb), (ba, bb) = SKIRT_Y
-    notch = fuse([box(XJ - LAP - SEAM_CLEAR, XJ + 1, ya, yb, -INNER_DEPTH - 1, ARCH_TOP)
-                  for ya, yb in ((fa, fb + SEAM_CLEAR), (ba - SEAM_CLEAR, bb))]).common(under_arch(XJ - LAP - 1, XJ + 1, 0))
-    parts.append(inner_tab(XJ, -1).cut(notch))   # 오른쪽 다리가 들어올 자리(안쪽 겹·가로대 끝)를 비운다
-    return fuse(parts).common(outline(0, XJ, True)).cut(pin_hole())
+    # 혀 아랫면(LUG_Z0) 위로만 안쪽 겹을 비운다. 그 아래 안쪽 겹과 가로대는 그대로 남는다
+    notch = box(XJ - LAP - SEAM_CLEAR, XJ + 1, fa, bb, LUG_Z0 - SEAM_CLEAR, ARCH_TOP)
+    # 턱이 걸릴 홈과 바깥 판 끝의 45° 모따기도 함께 비운다 (혀 바깥면: 앞 fa + SEAM_CLEAR, 뒤 bb - SEAM_CLEAR / 바깥 판 안쪽 면: 앞 fa, 뒤 bb)
+    for face, plate_face, s in ((fa + SEAM_CLEAR, fa, -1), (bb - SEAM_CLEAR, bb, 1)):
+        notch = notch.fuse(hook_pocket(face, s)).fuse(lead_in(plate_face, s))
+    notch = notch.common(under_arch(XJ - LAP - 1, XJ + 1, 0))
+    parts.append(inner_tab(XJ, -1).cut(notch))   # 오른쪽 혀가 들어올 자리(안쪽 겹·홈·모따기)를 비운다
+    return fuse(parts).common(outline(0, XJ, True))
 
 
 def right_piece():
     x_start = XJ + SEAM_CLEAR
     parts = [roof(x_start, TOTAL_LEN)]
     parts.append(inner_tab(x_start, +1))
-    # 이음선을 넘어 왼쪽 조각 바깥 판 안쪽으로 들어가는 다리 (바깥 판·지붕 쪽으로 SEAM_CLEAR 여유).
-    # 왼쪽 조각의 빈 자리가 이음선 쪽으로 열려 있어, 오른쪽 조각을 길이 방향으로 밀어 넣거나 아래에서 올려 끼운다
+    # 이음선을 넘어 왼쪽 조각 바깥 판 안쪽으로 들어가는 혀 (바깥 판·지붕 쪽으로 SEAM_CLEAR 여유). 아랫면은 LUG_Z0에서 수평, 끝 바깥면에 네모 턱, 뿌리에 라운드.
+    # 오른쪽 조각을 길이 방향으로 밀어 넣으면 턱이 바깥 판 끝 모따기를 타고 혀를 안쪽으로 휘게 했다가 홈에 걸린다
     (fa, fb), (ba, bb) = SKIRT_Y
-    for ya, yb in ((fa + SEAM_CLEAR, fb), (ba, bb - SEAM_CLEAR)):
-        lug = box(XJ - LAP, x_start, ya, yb, -INNER_DEPTH, ARCH_TOP)
-        parts.append(lug.common(leg_prism(x_start, -1)).common(under_arch(XJ - LAP, x_start, SEAM_CLEAR)))
+    for (ya, yb), face, s in (((fa + SEAM_CLEAR, fb), fa + SEAM_CLEAR, -1), ((ba, bb - SEAM_CLEAR), bb - SEAM_CLEAR, 1)):
+        lug = fuse([box(XJ - LAP, x_start, ya, yb, LUG_Z0, ARCH_TOP), hook(face, s), root_fillet(face, s)])
+        parts.append(lug.common(under_arch(XJ - LAP, x_start, SEAM_CLEAR)))
     parts.append(tab(TOTAL_LEN - TAB, TOTAL_LEN, SKIRT_DEPTH))
-    return fuse(parts).common(outline(XJ - LAP, TOTAL_LEN, False)).cut(pin_hole())
+    return fuse(parts).common(outline(XJ - LAP, TOTAL_LEN, False))
 
 
 def export(shape, name):

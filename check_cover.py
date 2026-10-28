@@ -81,17 +81,10 @@ pr = overhang_patch(mr, rb.XMax, -1)
 report("a", all(max(d) <= BED for d in dims) and pl <= PATCH_LIMIT and pr <= PATCH_LIMIT,
        "bbox L=%.1f×%.1f×%.1f R=%.1f×%.1f×%.1f (한계 %.0f), 서포트 필요 면 최대 덩어리 L=%.1f R=%.1f mm² (허용 %.0f)" % (dims[0] + dims[1] + (BED, pl, pr, PATCH_LIMIT)))
 
-# (b) 간섭과 조립 경로: 제자리에서 간섭 0, 오른쪽 조각을 아래에서 40mm 올리거나 오른쪽에서 20mm 밀어 넣는 동안 어디서도 걸리지 않아야 한다
+# (b) 간섭: 조립한 자리에서 두 조각이 서로 파고들지 않는다
+# (조립 경로는 검사하지 않는다. 후크는 끼울 때 혀가 휘어야 들어가므로 강체 이동으로는 잴 수 없다)
 inter = L.common(R).Volume
-def path_hit(v):
-    s = R.copy()
-    s.translate(v)
-    return L.common(s).Volume
-
-path_up = max(path_hit(Vector(0, 0, -dz)) for dz in range(1, 41))
-path_slide = max(path_hit(Vector(dx, 0, 0)) for dx in range(1, 21))
-report("b", inter < 1e-3 and path_up < 1e-3 and path_slide < 1e-3,
-       "간섭 부피 %.4fmm3, 조립 경로 간섭 아래에서 %.4f / 옆에서 %.4fmm3" % (inter, path_up, path_slide))
+report("b", inter < 1e-3, "간섭 부피 %.4fmm3" % inter)
 
 # (c) 지붕 간격, 사방 개방, 다리 없음, 처마가 맥북 두께를 덮음, 바깥 탭의 원형 홀(가로대 홀·다리 창)이 뚫려 있음
 mid_l = slab(lb.XMin + 20, lb.XMin + 85)
@@ -117,23 +110,25 @@ ok_c = ok_c and min(legs) > 1.0 and seam_hole < 1e-3
 detail.append("이음선 다리 부피 L=%.1f R=%.1f 이음선 홀막힘 %.3f" % (legs[0], legs[1], seam_hole))
 report("c", ok_c, "; ".join(detail))
 
-# (e) 고정 나사: M3 × 10 접시머리 나사(머리 Ø6 90°, 심 Ø2.4 = 골지름)를 앞뒤 바깥 판에 박았을 때 머리가 접시 자리에 들어가고 심이 구멍을 지나가며(간섭 0),
-#     나사를 왼쪽 조각에 고정한 채 오른쪽 조각을 6방향으로 0.5mm 옮기거나 나사 축을 경첩 삼아 ±1° 꺾으면 왼쪽 조각이나 나사에 걸린다
-pin = None
-for y, d in ((-5.4, 1), (LAPTOP_T + 5.4, -1)):
-    head = Part.makeCone(3.0, 0, 3.0, Vector(xj - 4.05, y, 8.5), Vector(0, d, 0)).common(Part.makeBox(10, 1.75, 10, Vector(xj - 9.05, y if d > 0 else y - 1.75, 3.5)))
-    screw = head.fuse(Part.makeCylinder(1.2, 10, Vector(xj - 4.05, y, 8.5), Vector(0, d, 0)))
-    pin = screw if pin is None else pin.fuse(screw)
-def blocked(pl):
+# (e) 스냅 후크: 예전 고정 구멍·접시 자리(이음선 4mm 안쪽, 높이 8.5)가 메워져 있고,
+#     오른쪽 조각을 +X(당기기)·±Z(위아래)로 0.5mm 옮기면 왼쪽 조각에 걸리며, 끼울 때 혀의 휨 변형률(1.5·t·y/L²)이 1.0% 이하다
+old_hole = Part.makeCylinder(1.3, 40, Vector(xj - 4.05, -12, 8.5), Vector(0, 1, 0))
+filled = old_hole.common(L).Volume + old_hole.common(R).Volume
+filled_need = 3.14159 * 1.3 ** 2 * 2.4 * 4 * 0.9          # 앞뒤 × (바깥 판 + 혀) 두 겹, 메시 오차 10% 허용
+def blocked(v):
     s = R.copy()
-    s.Placement = pl
-    return L.common(s).Volume + pin.common(s).Volume
+    s.translate(v)
+    return L.common(s).Volume
 
-pin_free = pin.common(L).Volume + pin.common(R).Volume
-moves = [Placement(Vector(*v), Rotation()) for v in ((0.5, 0, 0), (-0.5, 0, 0), (0, 0.5, 0), (0, -0.5, 0), (0, 0, 0.5), (0, 0, -0.5))]
-moves += [Placement(Vector(), Rotation(Vector(0, 1, 0), deg), Vector(xj - 4.05, 0, 8.5)) for deg in (1.0, -1.0)]
-pin_lock = min(blocked(pl) for pl in moves)
-report("e", pin_free < 1e-3 and pin_lock > 0.01, "나사 간섭 %.4fmm3, 이동·꺾임 8가지 중 가장 약한 걸림 %.3fmm3" % (pin_free, pin_lock))
+hook_lock = min(blocked(Vector(*v)) for v in ((0.5, 0, 0), (0, 0, 0.5), (0, 0, -0.5)))
+lug_len = xj - rb.XMin                                                                  # 휘는 팔 길이 = 이음선에서 혀 끝까지
+plain = R.common(Part.makeBox(9, 10, 2, Vector(xj - 10, -8, 12))).BoundBox              # 턱 위쪽 높이의 앞쪽 혀 단면
+barb = R.common(Part.makeBox(lug_len - 1, 10, 30, Vector(rb.XMin, -8, -10))).BoundBox   # 턱이 있는 앞쪽 혀
+lug_t, hook_h = plain.YLength, plain.YMin - barb.YMin
+strain = 1.5 * lug_t * hook_h / lug_len ** 2 * 100
+report("e", filled > filled_need and hook_lock > 0.01 and hook_h > 0.3 and strain <= 1.0,
+       "후크: 옛 고정 구멍 자리 채움 %.1f/%.1fmm3, +X·±Z 이동 중 가장 약한 걸림 %.3fmm3, 혀 L=%.2f t=%.2f 턱 %.2f → 변형률 %.2f%% (허용 1.0)"
+       % (filled, filled_need, hook_lock, lug_len, lug_t, hook_h, strain))
 
 # (d) 닫힌 솔리드
 report("d", ml.isSolid() and mr.isSolid() and L.isValid() and R.isValid() and ml.countComponents() == 1 and mr.countComponents() == 1, "isSolid L=%s R=%s, 덩어리 L=%d R=%d" % (ml.isSolid(), mr.isSolid(), ml.countComponents(), mr.countComponents()))
